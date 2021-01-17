@@ -1,7 +1,7 @@
 # STM32 HAL Drivers for interfacing with various components
 
-Since one can struggle a bit finding drivers for the STM32 microcontrollers, I've decided to start sharing whatever written drivers I found
-laying around in the past projects I've done and will do. If you are willing to contribute feel free to make a pull request and I'll take a look at it.
+Since one can struggle a bit finding drivers for the STM32 microcontrollers, I've decided to start sharing whatever drivers I found
+laying around in the past projects, and will share the future drivers. If you are willing to contribute feel free to do so :)
 
 
 You can find more information about the prerequisites and setup necessary about each driver in the <drivername>.h file
