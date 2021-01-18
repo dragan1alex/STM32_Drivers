@@ -10,6 +10,7 @@ You can find more information about the prerequisites and setup necessary about 
 Added so far:
 - Single data line neopixel driver (only RGB channels supported at the moment)
 - SHT30 I2C temperature and humidity sensor driver
-
-To be added in the near future:
 - Winbond SPI Flash driver
+
+To be added in the future:
+- TFT LCD driver using 16bit parralel data interface (may take some time, I don't have the LCD yet)
