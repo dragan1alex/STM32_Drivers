@@ -91,9 +91,9 @@ void commandFlash(uint8_t cmd, uint8_t write)
 }
 
 /*
- * Read the UDID of the flash IC
+ * Read the flash ID
  *
- * return:	32bit value of the UDID
+ * return:	32bit value of the ID
  */
 uint32_t readFlashID()
 {
