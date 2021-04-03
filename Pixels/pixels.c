@@ -8,26 +8,45 @@
 #include "pixels.h"
 
 Pixel pixel[NUMBER_OF_PIXELS];
-PixelFade pixelFade[NUMBER_OF_PIXELS];
 PixelData pixelData;
 
+/*
+ * Initialization function for the pixels
+ * - Sets up all the pixel values to white and half brightness
+ * - Starts the timer in PWM DMA mode for data transfer
+ */
 void initPixels()
 {
 	uint16_t i;
 	for(i=0;i<NUMBER_OF_PIXELS;i++)
 	{
-		//randomizePixelColor(i, MAX_BRIGHTNESS);
+		setPixelColor(i, 255, 255, 255);
+		setPixelBrightness(i, MAX_BRIGHTNESS / 2);
 	}
-	disablePixelsFade();
 	initDmaTransfer();
 }
 
+/*
+ * Set up a pixel
+ *
+ * @params	number: pixel number from 0 to NUMBER_OF_PIXELS-1
+ * 			p: Pixel type value to be set
+ *
+ * @return	nothing
+ */
 void setPixel(uint16_t number, Pixel p)
 {
 	if(number < NUMBER_OF_PIXELS)
 		pixel[number] = p;
 }
 
+/*
+ * Get a pixel
+ *
+ * @params 	number: pixel number from 0 to NUMBER_OF_PIXELS-1
+ *
+ * @return	Pixel type value
+ */
 Pixel getPixel(uint16_t number)
 {
 	Pixel error;
@@ -38,88 +57,30 @@ Pixel getPixel(uint16_t number)
 }
 
 /*
- * Sets the red, green and blue channels to the maximum brightness, keeping the ratio between them
- * Also sets the fade out delay for the pixel
+ * Set the brightness of a specified pixel
+ *
+ * @params	number: pixel number from 0 to NUMBER_OF_PIXELS-1
+ * 			brightness: the brightness to set the pixel to from 0 to MAX_BRIGHTNESS
+ *
+ * @return	nothing
  */
-void normalizePixel(Pixel* p)
-{
-	uint8_t max = 0;
-	float ratio;
-	if(p->r > max)
-	{
-		max = p->r;
-	}
-	if(p->g > max)
-	{
-		max = p->g;
-	}
-	if(p->b > max)
-	{
-		max = p->b;
-	}
-	if(max == 0)
-	{
-		p->r = 255;
-		p->g = 255;
-		p->b = 255;
-		max = 255;
-	}
-	ratio = ((float)p->brightness * 255.0 / 100.0) / (float)max;
-	p->r = ratio * p->r;
-	p->g = ratio * p->g;
-	p->b = ratio * p->b;
-	p->fadeOutDelay = settings.fadeOutTime / p->brightness;
-}
-
-void decreasePixelBrightness(uint16_t number, uint64_t currentTime)
-{
-	if(number >= NUMBER_OF_PIXELS)
-		return;
-	if(pixel[number].canFade == FALSE)
-		return;
-	if(pixel[number].brightness == 0)
-		return;
-	if(currentTime >= pixel[number].nextFadeTime)
-	{
-		pixel[number].brightness--;
-		pixel[number].nextFadeTime = currentTime + pixel[number].fadeOutDelay;
-	}
-}
-
 void setPixelBrightness(uint16_t number, uint8_t brightness)
 {
 	if(number >= NUMBER_OF_PIXELS || brightness > MAX_BRIGHTNESS)
 		return;
 	pixel[number].brightness = brightness;
-	if(brightness == 0)
-		return;
-	pixel[number].fadeOutDelay = settings.fadeOutTime / pixel[number].brightness;
 }
 
-void randomizePixelColor(uint16_t number, uint8_t brightness)
-{
-	if(number >= NUMBER_OF_PIXELS)
-		return;
-	Pixel* p = &pixel[number];
-	p->r = rand() % 256;
-	p->g = rand() % 256;
-	p->b = rand() % 256;
-	p->brightness = brightness;
-	normalizePixel(p);
-}
-
-void setPixelColorNormalized(uint16_t number, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness)
-{
-	if(number >= NUMBER_OF_PIXELS || brightness > 100)
-		return;
-	Pixel* p = &pixel[number];
-	p->r = red;
-	p->g = green;
-	p->b = blue;
-	p->brightness = brightness;
-	normalizePixel(p);
-}
-
+/*
+ * Set a pixel to a specific color in RGB
+ *
+ * @params	number: pixel number from 0 to NUMBER_OF_PIXELS-1
+ * 			red: red value from 0-255
+ * 			green: green value from 0-255
+ * 			blue: blue value from 0-255
+ *
+ * @return 	nothing
+ */
 void setPixelColor(uint16_t number, uint8_t red, uint8_t green, uint8_t blue)
 {
 	if(number >= NUMBER_OF_PIXELS)
@@ -130,77 +91,12 @@ void setPixelColor(uint16_t number, uint8_t red, uint8_t green, uint8_t blue)
 	p->b = blue;
 }
 
-void enablePixelsFade()
-{
-	uint16_t i;
-	for(i=0;i<NUMBER_OF_PIXELS;i++)
-	{
-		pixel[i].canFade = TRUE;
-	}
-}
-
-void disablePixelsFade()
-{
-	uint16_t i;
-	for(i=0;i<NUMBER_OF_PIXELS;i++)
-	{
-		pixel[i].canFade = FALSE;
-		pixelFade[i].fadeFinished = TRUE;
-	}
-}
-
-void pixelCanFade(uint16_t number, uint8_t status)
-{
-	if(number >= NUMBER_OF_PIXELS)
-		return;
-	if(status)
-		pixel[number].canFade = TRUE;
-	else
-		pixel[number].canFade = FALSE;
-}
-
-void setNextPixelFadeColor(uint16_t number, uint8_t r, uint8_t g, uint8_t b, uint32_t duration)
-{
-	if(number >= NUMBER_OF_PIXELS)
-		return;
-	pixelFade[number].ir = pixel[number].r;
-	pixelFade[number].ig = pixel[number].g;
-	pixelFade[number].ib = pixel[number].b;
-	pixelFade[number].r = r;
-	pixelFade[number].g = g;
-	pixelFade[number].b = b;
-	pixelFade[number].startTime = osKernelGetTickCount();
-	pixelFade[number].fadeDuration = duration;
-	pixelFade[number].fadeFinished = FALSE;
-}
-
-void fadePixelColor(uint16_t number, uint32_t currentTime)
-{
-	if(number >= NUMBER_OF_PIXELS)
-		return;
-	if(pixelFade[number].fadeFinished)
-		return;
-	uint8_t r,g,b;
-	float divider = 0;
-	divider = (float)(currentTime - pixelFade[number].startTime) / (float)pixelFade[number].fadeDuration;
-	r = pixelFade[number].ir + ((int16_t)pixelFade[number].r - (int16_t)pixelFade[number].ir) * divider;
-	g = pixelFade[number].ig + ((int16_t)pixelFade[number].g - (int16_t)pixelFade[number].ig) * divider;
-	b = pixelFade[number].ib + ((int16_t)pixelFade[number].b - (int16_t)pixelFade[number].ib) * divider;
-	setPixelColor(number, r, g, b);
-	setPixelBrightness(number, settings.maxBrightness);
-	if(divider >= 1)
-		pixelFade[number].fadeFinished = TRUE;
-}
-
 /*
  * Below are the functions responsible for transferring the Pixel data to the pixels
  * You can modify the parameters required for data transfer in pixels.h
  * If the pixels light up fine don't mess around with the below functions
  */
 
-/*
- * Needs to be called after MCU boot to start the asynchronous pixel data transfer
- */
 void initDmaTransfer()
 {
 	pixelData.currentOutputLed = 2;
@@ -225,6 +121,8 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
  * Function responsible for translating 8-bit red, green, blue channels to pwm values for the LEDs to understand
  * For more info about the protocol go to https://datasheet.lcsc.com/szlcsc/2009231607_TCWIN-TC1010RGB-3CSA-TX1812-1010A-1010_C784559.pdf
  * or any neopixel documentation.
+ *
+ * If the color seems messed up change the order of the color in this function :)
  */
 void copyLedToBuffer(uint16_t number, uint8_t* buffer)
 {
@@ -238,9 +136,9 @@ void copyLedToBuffer(uint16_t number, uint8_t* buffer)
 	for(i=7;i>=0;i--)
 	{
 		if(currentValue & (1<<i))
-			*buffer = 60;
+			*buffer = COUNTER_PERIOD * 3 / 4;
 		else
-			*buffer = 20;
+			*buffer = COUNTER_PERIOD * 1 / 4;
 		buffer++;
 	}
 	/* Copy green color */
@@ -248,9 +146,9 @@ void copyLedToBuffer(uint16_t number, uint8_t* buffer)
 	for(i=7;i>=0;i--)
 	{
 		if(currentValue & (1<<i))
-			*buffer = 60;
+			*buffer = COUNTER_PERIOD * 3 / 4;
 		else
-			*buffer = 20;
+			*buffer = COUNTER_PERIOD * 1 / 4;
 		buffer++;
 	}
 	/* Copy blue color */
@@ -258,9 +156,9 @@ void copyLedToBuffer(uint16_t number, uint8_t* buffer)
 	for(i=7;i>=0;i--)
 	{
 		if(currentValue & (1<<i))
-			*buffer = 60;
+			*buffer = COUNTER_PERIOD * 3 / 4;
 		else
-			*buffer = 20;
+			*buffer = COUNTER_PERIOD * 1 / 4;
 		buffer++;
 	}
 }

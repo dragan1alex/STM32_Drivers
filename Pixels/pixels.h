@@ -3,21 +3,35 @@
  *
  *  Created on: Dec 26, 2020
  *      Author: Andrei
+ *
+ *  Pixel library for driving WS2812 and other variants of individually addressable LEDs
+ *  Prerequisites:
+ *  - set up the timer used for data transfer to run at ~800KHz
+ *  - enable the interrupts on the channel used for communicating with the first pixel
+ *  - enable DMA transfer from memory to peripherial in circular mode,
+ *  	memory address increment,
+ *  	data width for peripherial: half word, for memory: byte
+ *  - forward declaration of the TIM handle in main.h (copy the line containing htimX from main.c to main.h)
+ *
+ *  (*) if other interrupts are enabled, you may want to increase the interrupt priority for this timer to a higher value
+ *
+ *
+ *
  */
 
 #ifndef INC_PIXELS_H_
 #define INC_PIXELS_H_
 
+/* Setup for the pixel library */
 #define PIXEL_DATA_TIMER 			htim3
 #define PIXEL_DATA_CHANNEL			TIM_CHANNEL_1
 #define MAX_BRIGHTNESS				100
+#define COUNTER_PERIOD				80
 
 #define NUMBER_OF_PIXELS 			34
-#define PIXEL_RESET_COUNTER_MAX		4
+#define PIXEL_RESET_COUNTER_MAX		2
 
-#include "globalVariables.h"
 #include "main.h"
-#include "settings.h"
 #include "stdlib.h"
 
 typedef enum
@@ -36,19 +50,7 @@ typedef struct
 {
 	uint8_t r,g,b;
 	uint8_t brightness;
-	uint8_t canFade;
-	uint16_t fadeOutDelay;
-	uint32_t nextFadeTime;
 }Pixel;
-
-typedef struct
-{
-	uint8_t r,g,b; 			//desired color
-	uint8_t ir,ig,ib; 		//initial color
-	uint32_t startTime;		//cpu tick count when fade started
-	uint32_t fadeDuration;	//in milliseconds
-	uint8_t fadeFinished;	//flag to offload CPU when no fade is needed
-}PixelFade;
 
 typedef struct
 {
@@ -60,23 +62,12 @@ typedef struct
 }PixelData;
 
 Pixel pixel[NUMBER_OF_PIXELS];
-PixelFade pixelFade[NUMBER_OF_PIXELS];
-PixelData pixelData;
 
 void initPixels();
 void setPixel(uint16_t number, Pixel p);
 Pixel getPixel(uint16_t number);
-void normalizePixel(Pixel* p);
-void decreasePixelBrightness(uint16_t number, uint64_t currentTime);
 void setPixelBrightness(uint16_t number, uint8_t brightness);
-void randomizePixelColor(uint16_t number, uint8_t brightness);
-void setPixelColorNormalized(uint16_t number, uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness);
 void setPixelColor(uint16_t number, uint8_t red, uint8_t green, uint8_t blue);
-void enablePixelsFade();
-void disablePixelsFade();
-void pixelCanFade(uint16_t number, uint8_t status);
-void setNextPixelFadeColor(uint16_t number, uint8_t r, uint8_t g, uint8_t b, uint32_t duration);
-void fadePixelColor(uint16_t number,uint32_t currentTime);
 
 void initDmaTransfer();
 void HAL_TIM_IC_CaptureHalfCpltCallback(TIM_HandleTypeDef *htim);
